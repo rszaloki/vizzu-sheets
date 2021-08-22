@@ -42,7 +42,7 @@ export const App: React.FC<{ gapi: any }> = ({ gapi }) => {
           </>
         )}
       </Header>
-      {auth?.isSignedIn.get() ? (
+      {user.isSignedIn ? (
         <Main>
           <Sheet gapi={gapi} />
         </Main>

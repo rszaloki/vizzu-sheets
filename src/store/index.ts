@@ -1,10 +1,12 @@
 import { createStore, combineReducers } from "redux";
 import user from "./user";
+import sheets from "./sheets";
 import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux'
 
 export const store = createStore(
   combineReducers({
     user,
+    sheets
   })
 );
 
