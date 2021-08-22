@@ -1,7 +1,7 @@
 import React from "react";
-import { GoogleApiProvider, useGoogleApi } from "react-gapi";
 import { Box, Button, Grommet, Header, Main, Text, Avatar } from "grommet";
 import { Sheet } from "./Sheet";
+import { useAppSelector } from "./store";
 
 const theme = {
   global: {
@@ -11,32 +11,21 @@ const theme = {
   },
 };
 
-function AuthComponent() {
-  const gapi = useGoogleApi({
-    scopes: [
-      "profile",
-      "https://www.googleapis.com/auth/spreadsheets.readonly",
-    ],
-    discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
-  });
-
-  const auth = gapi?.auth2.getAuthInstance();
+export const App: React.FC<{ gapi: any }> = ({ gapi }) => {
+  const auth = gapi.auth2.getAuthInstance();
+  const user = useAppSelector((state) => state.user);
 
   return (
     <Grommet full theme={theme}>
       <Header pad="small" justify="between">
-        {!auth ? (
-          <Text>Loading...</Text>
-        ) : auth?.isSignedIn.get() ? (
+        {user.isSignedIn ? (
           <>
             <Box direction="row" align="center" gap="small">
-              <Avatar
-                src={auth.currentUser.get().getBasicProfile().getImageUrl()}
-              />
-              <Text>{auth.currentUser.get().getBasicProfile().getName()}</Text>
+              <Avatar src={user.user?.avatar} />
+              <Text>{user.user?.name}</Text>
             </Box>
             <Button
-              onClick={() => auth.signOut()}
+              onClick={() => gapi.auth2.getAuthInstance().signOut()}
               label="Logout"
               size="small"
             />
@@ -45,7 +34,7 @@ function AuthComponent() {
           <>
             <Box align="center" />
             <Button
-              onClick={() => auth.signIn()}
+              onClick={() => gapi.auth2.getAuthInstance().signIn()}
               primary
               label="Login"
               size="small"
@@ -53,17 +42,11 @@ function AuthComponent() {
           </>
         )}
       </Header>
-      {auth?.isSignedIn.get() ? <Main><Sheet gapi={gapi} /></Main> : null}
+      {auth?.isSignedIn.get() ? (
+        <Main>
+          <Sheet gapi={gapi} />
+        </Main>
+      ) : null}
     </Grommet>
   );
-}
-
-function App() {
-  return (
-    <GoogleApiProvider clientId="707661571297-0n3e77lf89s1i049naqkeb3c6l8v03n0.apps.googleusercontent.com">
-      <AuthComponent />
-    </GoogleApiProvider>
-  );
-}
-
-export default App;
+};
