@@ -1,22 +1,14 @@
 import React, { useContext, useReducer } from 'react';
 import type { Reducer, Dispatch } from 'react';
 
-type ReducerFunction<State, Action> = (state: State, action: Action) => State;
-
-export interface ActionInterface {
-  type: string;
-  [key:string]:any;
-}
-
 type HookResult<State, Action> = {
   state: State;
   dispatch: Dispatch<Action>;
 };
 
-
-export function createStateful<State, Action extends ActionInterface>(
+export function createStateful<State, Action extends {type:string}>(
   initialState: State,
-  reducers: { [key:string]: ReducerFunction<State, ActionInterface> }
+  reducers: { [key in Action['type']]: (state: State, action: Extract<Action,{type:key}>) => State }
 ): {
   Stateful: React.FC;
   hook: () => HookResult<State, Action>;
@@ -26,10 +18,12 @@ export function createStateful<State, Action extends ActionInterface>(
     dispatch: () => null,
   });
 
+  const isValid = (key:string): key is Action['type'] => reducers.hasOwnProperty(key)
+
   const reducer = (state: State, action: Action) => {
     const type = action.type;
-    if (reducers[type]) {
-      return reducers[type](state, action);
+    if (isValid(type)) {
+      return reducers[type](state, action as Extract<Action,{type:typeof type}>);
     } else {
       return state;
     }

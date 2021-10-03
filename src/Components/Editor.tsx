@@ -1,11 +1,17 @@
 import React from 'react';
-import { createStateful, ActionInterface } from './Stateful';
+import { createStateful } from './Stateful';
 import type { ParseResult } from 'papaparse';
 import { LoadCSV } from './LoadCSV';
 import merge from 'deepmerge';
+import { DefaultState } from './DefaultState';
 
-type VizzuState = {
-    text: string;
+export type CSVColumn = {
+    fieldName: string;
+    missing: boolean;
+};
+
+export type VizzuState = {
+    columns: CSVColumn[];
 };
 
 export type CSVRow = { [key: string]: any };
@@ -21,14 +27,17 @@ type State = {
     timelineStates: VizzuState[];
 };
 
-interface ActionLoadCSV extends ActionInterface { type: 'loadCSV' };
-interface ActionSetCSVData extends ActionInterface {
-    type: 'setCSVData';
-    parseResult: ParseResult<CSVRow>;
-};
-interface ActionAddState extends ActionInterface { type: 'addState' };
-
-type Action = ActionLoadCSV | ActionSetCSVData | ActionAddState;
+type Action =
+    | {
+          type: 'loadCSV';
+      }
+    | {
+          type: 'setCSVData';
+          parseResult: ParseResult<CSVRow>;
+      }
+    | {
+          type: 'addState';
+      };
 
 const initialState: State = {
     csv: {
@@ -36,8 +45,10 @@ const initialState: State = {
         isLoaded: false,
     },
     timelineStates: [],
-    defaultVizzuState: { text: '' },
+    defaultVizzuState: { columns: [] },
 };
+
+const overwriteMerge = (_: any, sourceArray: any[]) => sourceArray;
 
 const { Stateful, hook } = createStateful<State, Action>(initialState, {
     addState: (state) => state,
@@ -45,13 +56,33 @@ const { Stateful, hook } = createStateful<State, Action>(initialState, {
         return merge(state, { csv: { isLoading: true } });
     },
     setCSVData: (state, action) => {
-        return merge(state, { csv: { isLoading: false, isLoaded: true, ...(action as ActionSetCSVData).parseResult } });
+        const { meta } = action.parseResult;
+        const csv = {
+            isLoading: false,
+            isLoaded: true,
+            ...action.parseResult,
+        };
+        const columns = state.defaultVizzuState.columns.map((column) => ({
+            ...column,
+            missing: !meta.fields?.includes(column.fieldName),
+        }));
+        meta.fields?.forEach((fieldName) => {
+            if (!columns.find((col) => col.fieldName === fieldName)) {
+                columns.push({ fieldName, missing: false });
+            }
+        });
+        return merge<State>(
+            state,
+            { csv, defaultVizzuState: { columns } },
+            { arrayMerge: overwriteMerge }
+        );
     },
 });
 
 export const Editor: React.FC = ({ children }) => (
     <Stateful>
         <LoadCSV />
+        <DefaultState />
     </Stateful>
 );
 
